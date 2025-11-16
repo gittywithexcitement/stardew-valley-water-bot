@@ -63,9 +63,9 @@ namespace WaterBot
                     Logger.Log("Player provided trigger to begin bot.");
                     bool triggeredByController = e.Button.TryGetController(out Buttons _);
                     bool controllerOnlyMode = !Context.IsSplitScreen && Game1.options.gamepadControls;
-                    bool allowDiagonalWatering = !(triggeredByController || controllerOnlyMode);
+                    bool useMouseKeyboardWateringRange = !(triggeredByController || controllerOnlyMode);
                     Farmer activePlayer = Game1.player;
-                    this.bot?.start(this.console, activePlayer, allowDiagonalWatering);
+                    this.bot?.start(this.console, activePlayer, useMouseKeyboardWateringRange);
                 }
             }
         }

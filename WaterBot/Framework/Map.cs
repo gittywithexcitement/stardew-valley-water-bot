@@ -25,7 +25,8 @@ namespace WaterBot.Framework
 
         private Dictionary<Vector2, List<Tile>> neighborDict;
         private Dictionary<Vector2, List<Tile>> coveredByDict;
-        private bool allowDiagonalWatering = true;
+        private bool useMouseKeyboardWateringRange = true;
+        private bool allowStandingOnTargetTile = true;
 
         public Map()
         {
@@ -45,9 +46,14 @@ namespace WaterBot.Framework
             };
         }
 
-        public void SetAllowDiagonalWatering(bool allow)
+        public void SetUseMouseKeyboardWateringRange(bool useMouseKeyboardRange)
         {
-            this.allowDiagonalWatering = allow;
+            this.useMouseKeyboardWateringRange = useMouseKeyboardRange;
+        }
+
+        public void SetAllowStandingOnTargetTile(bool allow)
+        {
+            this.allowStandingOnTargetTile = allow;
         }
 
         /// <summary>
@@ -735,7 +741,7 @@ namespace WaterBot.Framework
         /// <param name="group">Group of crops to find path through.</param>
         public List<ActionableTile> findFillPath(Group group, console console)
         {
-            if (group.center is not null)
+            if (group.center is not null && this.allowStandingOnTargetTile)
             {
                 return new List<ActionableTile> { new ActionableTile(group.center.getPoint(), group.getList().Select(x => x.getPoint()).ToList(), ActionableTile.Action.Water) };
             }
@@ -789,57 +795,39 @@ namespace WaterBot.Framework
                         ActionableTile actionable = new ActionableTile(ActionableTile.Action.Water);
                         current.visited = true;
 
-                        if (current.block)
+                        Tile? standTile = null;
+
+                        if (current.block || !this.allowStandingOnTargetTile)
                         {
-                            int score = 0;
-                            Tile bestOption = this.map[current.y][current.x];
+                            standTile = this.findBestStandTile(current, group);
 
-                            // If you can stand on adjacents, do it.
-                            foreach (var direction in this.directions.Concat(this.diagonals))
+                            if (standTile == null)
                             {
-                                if (direction.IsInBounds(current.y + direction.Y, current.x + direction.X))
+                                if (current.block)
                                 {
-                                    Tile neighbor = this.map[current.y + direction.Y][current.x + direction.X];
-                                    if (neighbor.block)
-                                    {
-                                        continue;
-                                    }
-
-                                    int neighborScore = 0;
-
-                                    if (group.Contains(neighbor)) neighborScore += 5;
-                                    if (neighbor.waterable) neighborScore += 5;
-                                    if (!neighbor.watered) neighborScore += 5;
-                                    if (!neighbor.visited) neighborScore += 5;
-
-                                    if (neighborScore > score)
-                                    {
-                                        bestOption = neighbor;
-                                    }
+                                    continue;
                                 }
-                            }
 
-                            if (bestOption == null)
-                            {
-                                continue;
+                                standTile = current;
                             }
-
-                            // Set possible standing point.
-                            actionable.setStand(bestOption.getPoint());
                         }
                         else
                         {
-                            // Set this as standing position
-                            actionable.setStand(current.getPoint());
+                            standTile = current;
                         }
 
-                        // Water here
+                        actionable.setStand(standTile.getPoint());
+
+                        // Only water the tile we're standing on when the control scheme allows it.
                         if (current.getPoint() == actionable.getStand())
                         {
-                            actionable.pushExecuteOn(current.getPoint());
-                            current.watered = true;
+                            if (this.allowStandingOnTargetTile)
+                            {
+                                actionable.pushExecuteOn(current.getPoint());
+                                current.watered = true;
+                            }
                         }
-                        else if (this.map[actionable.getStand().Y][actionable.getStand().X].waterable && !this.map[actionable.getStand().Y][actionable.getStand().X].watered)
+                        else if (this.allowStandingOnTargetTile && this.map[actionable.getStand().Y][actionable.getStand().X].waterable && !this.map[actionable.getStand().Y][actionable.getStand().X].watered)
                         {
                             actionable.pushExecuteOn(actionable.getStand());
                             this.map[actionable.getStand().Y][actionable.getStand().X].watered = true;
@@ -863,7 +851,7 @@ namespace WaterBot.Framework
                             }
                         }
 
-                        if (this.allowDiagonalWatering)
+                        if (this.useMouseKeyboardWateringRange)
                         {
                             foreach (var direction in this.diagonals)
                             {
@@ -895,6 +883,44 @@ namespace WaterBot.Framework
             } while (keepGoing);
 
             return path;
+        }
+
+        private Tile? findBestStandTile(Tile current, Group group)
+        {
+            Tile? bestOption = null;
+            int score = int.MinValue;
+            IEnumerable<(int Y, int X, Func<int, int, bool> IsInBounds)> searchDirections = this.useMouseKeyboardWateringRange
+                ? this.directions.Concat(this.diagonals)
+                : this.directions;
+
+            foreach (var direction in searchDirections)
+            {
+                if (!direction.IsInBounds(current.y + direction.Y, current.x + direction.X))
+                {
+                    continue;
+                }
+
+                Tile neighbor = this.map[current.y + direction.Y][current.x + direction.X];
+                if (neighbor.block)
+                {
+                    continue;
+                }
+
+                int neighborScore = 0;
+
+                if (group.Contains(neighbor)) neighborScore += 5;
+                if (neighbor.waterable) neighborScore += 5;
+                if (!neighbor.watered) neighborScore += 5;
+                if (!neighbor.visited) neighborScore += 5;
+
+                if (neighborScore > score)
+                {
+                    bestOption = neighbor;
+                    score = neighborScore;
+                }
+            }
+
+            return bestOption;
         }
 
         /// <summary>

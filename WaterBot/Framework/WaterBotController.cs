@@ -22,7 +22,8 @@ namespace WaterBot.Framework
         public console? console;
         private Farmer? player;
         public int? ActiveScreenId { get; private set; }
-        private bool allowDiagonalWatering = true;
+        // Keyboard/mouse inputs can target diagonals & the tile underfoot; controllers cannot.
+        private bool useMouseKeyboardWateringRange = true;
         private Farmer Player => this.player ?? Game1.player;
 
         public WaterBotController(IModHelper helper)
@@ -39,15 +40,16 @@ namespace WaterBot.Framework
         /// </summary>
         ///
         /// <param name="console">Function for printing to debug console.</param>
-        public void start(console console, Farmer player, bool allowDiagonalWatering, bool showMessage = true)
+        public void start(console console, Farmer player, bool useMouseKeyboardWateringRange, bool showMessage = true)
         {
             this.console = console;
             this.player = player;
             this.ActiveScreenId = Context.ScreenId;
-            this.allowDiagonalWatering = allowDiagonalWatering;
+            this.useMouseKeyboardWateringRange = useMouseKeyboardWateringRange;
             this.active = true;
 
-            this.map.SetAllowDiagonalWatering(allowDiagonalWatering);
+            this.map.SetUseMouseKeyboardWateringRange(useMouseKeyboardWateringRange);
+            this.map.SetAllowStandingOnTargetTile(useMouseKeyboardWateringRange);
 
             // Load map data
             this.map.loadMap();
@@ -332,7 +334,7 @@ namespace WaterBot.Framework
 
                     if (WaterBot.config.RedoPathOnRefill)
                     {
-                        this.start(console, activePlayer, this.allowDiagonalWatering, false);
+                        this.start(console, activePlayer, this.useMouseKeyboardWateringRange, false);
                     }
                     else
                     {
