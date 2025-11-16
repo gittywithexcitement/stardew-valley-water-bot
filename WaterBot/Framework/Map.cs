@@ -25,6 +25,7 @@ namespace WaterBot.Framework
 
         private Dictionary<Vector2, List<Tile>> neighborDict;
         private Dictionary<Vector2, List<Tile>> coveredByDict;
+        private bool allowDiagonalWatering = true;
 
         public Map()
         {
@@ -42,6 +43,11 @@ namespace WaterBot.Framework
                 new (1, -1, (int y, int x) => x >= 0 && y < this.height),
                 new (-1, 1, (int y, int x) => x < this.width && y >= 0),
             };
+        }
+
+        public void SetAllowDiagonalWatering(bool allow)
+        {
+            this.allowDiagonalWatering = allow;
         }
 
         /// <summary>
@@ -857,16 +863,18 @@ namespace WaterBot.Framework
                             }
                         }
 
-                        // If you can water diagonals, do it.
-                        foreach (var direction in this.diagonals)
+                        if (this.allowDiagonalWatering)
                         {
-                            if (direction.IsInBounds(actionable.getStand().Y + direction.Y, actionable.getStand().X + direction.X))
+                            foreach (var direction in this.diagonals)
                             {
-                                Tile neighbor = this.map[actionable.getStand().Y + direction.Y][actionable.getStand().X + direction.X];
-                                if (neighbor.waterable && !neighbor.watered)
+                                if (direction.IsInBounds(actionable.getStand().Y + direction.Y, actionable.getStand().X + direction.X))
                                 {
-                                    actionable.pushExecuteOn(neighbor.getPoint());
-                                    neighbor.watered = true;
+                                    Tile neighbor = this.map[actionable.getStand().Y + direction.Y][actionable.getStand().X + direction.X];
+                                    if (neighbor.waterable && !neighbor.watered)
+                                    {
+                                        actionable.pushExecuteOn(neighbor.getPoint());
+                                        neighbor.watered = true;
+                                    }
                                 }
                             }
                         }

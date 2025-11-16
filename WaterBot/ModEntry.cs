@@ -1,5 +1,6 @@
 ﻿using BotFramework;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using StardewModdingAPI;
 using StardewModdingAPI.Events;
 using StardewValley;
@@ -55,7 +56,11 @@ namespace WaterBot
                 if (this.isWateringHoedDirt())
                 {
                     Logger.Log("Player provided trigger to begin bot.");
-                    this.bot?.start(this.console);
+                    bool triggeredByController = e.Button.TryGetController(out Buttons _);
+                    bool controllerOnlyMode = !Context.IsSplitScreen && Game1.options.gamepadControls;
+                    bool allowDiagonalWatering = !(triggeredByController || controllerOnlyMode);
+                    Farmer activePlayer = Game1.player;
+                    this.bot?.start(this.console, activePlayer, allowDiagonalWatering);
                 }
             }
         }
