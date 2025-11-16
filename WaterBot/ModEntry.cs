@@ -58,13 +58,18 @@ namespace WaterBot
 
             if (e.Button.IsActionButton()) // SButton.MouseRight 
             {
-                if (this.isWateringHoedDirt())
+                Farmer activePlayer = Game1.player;
+                if (activePlayer == null)
+                {
+                    return;
+                }
+
+                if (this.isWateringHoedDirt(activePlayer))
                 {
                     Logger.Log("Player provided trigger to begin bot.");
                     bool triggeredByController = e.Button.TryGetController(out Buttons _);
                     bool controllerOnlyMode = !Context.IsSplitScreen && Game1.options.gamepadControls;
                     bool useMouseKeyboardWateringRange = !(triggeredByController || controllerOnlyMode);
-                    Farmer activePlayer = Game1.player;
                     this.bot?.start(this.console, activePlayer, useMouseKeyboardWateringRange);
                 }
             }
@@ -73,27 +78,33 @@ namespace WaterBot
         /// <summary>
         /// Determines if the event was watering a tile of hoed dirt
         /// </summary>
-        private bool isWateringHoedDirt()
+        private bool isWateringHoedDirt(Farmer player)
         {
             // Is the player using a Watering Can on their Farm?
-            if (Game1.player?.CurrentItem is WateringCan)
+            if (player?.CurrentItem is WateringCan)
             {
+                GameLocation? location = player.currentLocation;
+                if (location == null)
+                {
+                    return false;
+                }
+
                 // Find action tiles
                 Vector2 mousePosition = Utility.PointToVector2(Game1.getMousePosition()) + new Vector2(Game1.viewport.X, Game1.viewport.Y);
-                Vector2 toolLocation = Game1.player.GetToolLocation(mousePosition);
+                Vector2 toolLocation = player.GetToolLocation(mousePosition);
                 Vector2 tile = Utility.clampToTile(toolLocation);
 
                 List<Vector2> tileLocations = this.Helper.Reflection
-                    .GetMethod(Game1.player.CurrentItem, "tilesAffected")
-                    .Invoke<List<Vector2>>(new Vector2(tile.X / 64, tile.Y / 64), 0, Game1.player);
+                    .GetMethod(player.CurrentItem, "tilesAffected")
+                    .Invoke<List<Vector2>>(new Vector2(tile.X / 64, tile.Y / 64), 0, player);
 
                 foreach (Vector2 tileLocation in tileLocations)
                 {
                     Vector2 rounded = new Vector2((float)Math.Round(tileLocation.X), (float)Math.Round(tileLocation.Y));
 
                     // If they just watered Hoe Dirt, return true
-                    if (Game1.currentLocation?.terrainFeatures.ContainsKey(rounded) == true &&
-                        Game1.currentLocation.terrainFeatures[rounded] is HoeDirt dirt &&
+                    if (location.terrainFeatures.TryGetValue(rounded, out TerrainFeature feature) &&
+                        feature is HoeDirt dirt &&
                         dirt.crop != null &&
                         ((dirt.crop.fullyGrown.Value &&
                         dirt.crop.dayOfCurrentPhase.Value > 0) || 

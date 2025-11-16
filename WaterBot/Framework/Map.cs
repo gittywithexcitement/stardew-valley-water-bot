@@ -25,6 +25,8 @@ namespace WaterBot.Framework
 
         private Dictionary<Vector2, List<Tile>> neighborDict;
         private Dictionary<Vector2, List<Tile>> coveredByDict;
+        private GameLocation? playerLocation;
+        private Farmer? farmer;
         private bool useMouseKeyboardWateringRange = true;
         private bool allowStandingOnTargetTile = true;
 
@@ -44,6 +46,16 @@ namespace WaterBot.Framework
                 new (1, -1, (int y, int x) => x >= 0 && y < this.height),
                 new (-1, 1, (int y, int x) => x < this.width && y >= 0),
             };
+        }
+
+        private GameLocation GetActiveLocation()
+        {
+            return this.playerLocation ?? Game1.player?.currentLocation ?? Game1.currentLocation ?? throw new InvalidOperationException("No active location available.");
+        }
+
+        private Farmer GetActiveFarmer()
+        {
+            return this.farmer ?? Game1.player ?? throw new InvalidOperationException("No active farmer available.");
         }
 
         public void SetUseMouseKeyboardWateringRange(bool useMouseKeyboardRange)
@@ -75,9 +87,11 @@ namespace WaterBot.Framework
         /// 
         /// <param name="x">X of tile.</param>
         /// <param name="y">Y of tile.</param>
-        public static bool tileIsPassable(int x, int y)
+        private bool tileIsPassable(int x, int y)
         {
-            return Game1.currentLocation.isCollidingPosition(new Rectangle(y * 64 + 1, x * 64 + 1, 62, 62), Game1.viewport, isFarmer: true, -1, glider: false, Game1.player);
+            GameLocation location = this.GetActiveLocation();
+            Farmer farmer = this.GetActiveFarmer();
+            return location.isCollidingPosition(new Rectangle(y * 64 + 1, x * 64 + 1, 62, 62), Game1.viewport, isFarmer: true, -1, glider: false, farmer);
         }
 
         /// <summary>
@@ -86,9 +100,10 @@ namespace WaterBot.Framework
         /// 
         /// <param name="x">X of tile.</param>
         /// <param name="y">Y of tile.</param>
-        public static bool tileIsRefillable(int x, int y)
+        private bool tileIsRefillable(int x, int y)
         {
-            return Game1.currentLocation.CanRefillWateringCanOnTile(y, x);
+            GameLocation location = this.GetActiveLocation();
+            return location.CanRefillWateringCanOnTile(y, x);
         }
 
         /// <summary>
@@ -97,14 +112,15 @@ namespace WaterBot.Framework
         /// 
         /// <param name="x">X of tile.</param>
         /// <param name="y">Y of tile.</param>
-        public static bool tileNeedsWatering(int x, int y)
+        private bool tileNeedsWatering(int x, int y)
         {
+            GameLocation location = this.GetActiveLocation();
             Vector2 index = new Vector2(x, y);
 
-            if (!Game1.currentLocation.isTileHoeDirt(index))
+            if (!location.isTileHoeDirt(index))
                 return false;
 
-            if (!Game1.currentLocation.terrainFeatures.TryGetValue(index, out TerrainFeature feature))
+            if (!location.terrainFeatures.TryGetValue(index, out TerrainFeature feature))
                 return false;
 
             if (feature is HoeDirt hoeDirt)
@@ -129,10 +145,20 @@ namespace WaterBot.Framework
         /// </summary>
         /// 
         /// <param name="location">Farm location instance.</param>
-        public void loadMap()
+        public void loadMap(Farmer farmer)
         {
-            this.height = Game1.currentLocation.map.Layers[0].LayerHeight;
-            this.width = Game1.currentLocation.map.Layers[0].LayerWidth;
+            if (farmer == null)
+            {
+                throw new ArgumentNullException(nameof(farmer));
+            }
+
+            this.farmer = farmer;
+            this.playerLocation = farmer.currentLocation ?? throw new InvalidOperationException("Player location is unavailable.");
+
+            GameLocation location = this.GetActiveLocation();
+
+            this.height = location.map.Layers[0].LayerHeight;
+            this.width = location.map.Layers[0].LayerWidth;
 
             List<List<Tile>> map = new List<List<Tile>>();
             List<Tile> waterableTiles = new List<Tile>();
@@ -144,13 +170,13 @@ namespace WaterBot.Framework
                 for (int x = 0; x < this.width; x++)
                 {
                     Point converted = Map.convertCoords(x, y, this.width, this.height);
-                    bool needsWatering = Map.tileNeedsWatering(converted.Y, converted.X);
+                    bool needsWatering = this.tileNeedsWatering(converted.Y, converted.X);
 
                     Tile tile = new Tile(
                         x,
                         y,
-                        Map.tileIsPassable(converted.X, converted.Y),
-                        Map.tileIsRefillable(converted.X, converted.Y),
+                        this.tileIsPassable(converted.X, converted.Y),
+                        this.tileIsRefillable(converted.X, converted.Y),
                         needsWatering
                     );
 
@@ -573,6 +599,7 @@ namespace WaterBot.Framework
         /// <param name="console">Function for printing to debug console.</param>
         public int[,] generateCostMatrix(console console, List<Group> groupings)
         {
+            Farmer farmer = this.GetActiveFarmer();
             foreach (Group group in groupings)
             {
                 if (group.Count() == 0)
@@ -603,7 +630,7 @@ namespace WaterBot.Framework
                         }
                         else if (j == 0 || i == 0)
                         {
-                            Point start = new Point(Game1.player.TilePoint.X, Game1.player.TilePoint.Y);
+                            Point start = new Point(farmer.TilePoint.X, farmer.TilePoint.Y);
                             Point end = groupings[i == 0 ? j - 1 : i - 1].Centroid(this);
 
                             Tuple<List<Tile>, int> path = this.walkablePathBetweenPoints(console, start, end);
@@ -755,9 +782,11 @@ namespace WaterBot.Framework
                 this.map[tile.y][tile.x].reset();
             }
 
+            Farmer farmer = this.GetActiveFarmer();
+
             // Queue for depth first search
             List<Tile> stack = new List<Tile>();
-            stack.Add(group.findClosestTile(Game1.player.TilePoint.X, Game1.player.TilePoint.Y).Item1);
+            stack.Add(group.findClosestTile(farmer.TilePoint.X, farmer.TilePoint.Y).Item1);
 
             bool keepGoing;
             do

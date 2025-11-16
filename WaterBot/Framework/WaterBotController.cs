@@ -52,7 +52,7 @@ namespace WaterBot.Framework
             this.map.SetAllowStandingOnTargetTile(useMouseKeyboardWateringRange);
 
             // Load map data
-            this.map.loadMap();
+            this.map.loadMap(this.Player);
 
             if (!this.active) return;
 
