@@ -21,6 +21,7 @@ namespace WaterBot.Framework
         private ActionableTile? refillStation;
         public console? console;
         private Farmer? player;
+        public int? ActiveScreenId { get; private set; }
         private bool allowDiagonalWatering = true;
         private Farmer Player => this.player ?? Game1.player;
 
@@ -42,6 +43,7 @@ namespace WaterBot.Framework
         {
             this.console = console;
             this.player = player;
+            this.ActiveScreenId = Context.ScreenId;
             this.allowDiagonalWatering = allowDiagonalWatering;
             this.active = true;
 
@@ -366,6 +368,7 @@ namespace WaterBot.Framework
             target.controller = null;
             this.displayMessage(this.helper.Translation.Get("process.interrupt"), 1);
             this.player = null;
+            this.ActiveScreenId = null;
         }
 
         /// <summary>
@@ -379,6 +382,7 @@ namespace WaterBot.Framework
             target.controller = null;
             this.displayMessage(this.helper.Translation.Get("process.exhausted"), 3);
             this.player = null;
+            this.ActiveScreenId = null;
         }
 
         /// <summary>
@@ -392,6 +396,7 @@ namespace WaterBot.Framework
             target.controller = null;
             this.displayMessage(this.helper.Translation.Get("process.waterless"), 3);
             this.player = null;
+            this.ActiveScreenId = null;
         }
 
         /// <summary>
@@ -405,6 +410,7 @@ namespace WaterBot.Framework
             target.controller = null;
             this.displayMessage(this.helper.Translation.Get("process.end"), 1);
             this.player = null;
+            this.ActiveScreenId = null;
         }
 
         /// <summary>

@@ -48,10 +48,15 @@ namespace WaterBot
 
             if (this.bot?.active == true)
             {
-                Logger.Log("Player provided interrupt signal. Process stopped.");
-                this.bot.stop();
+                if (this.bot.ActiveScreenId == null || this.bot.ActiveScreenId == Context.ScreenId)
+                {
+                    Logger.Log("Player provided interrupt signal. Process stopped.");
+                    this.bot.stop();
+                }
+                return;
             }
-            else if (e.Button.IsActionButton()) // SButton.MouseRight 
+
+            if (e.Button.IsActionButton()) // SButton.MouseRight 
             {
                 if (this.isWateringHoedDirt())
                 {
