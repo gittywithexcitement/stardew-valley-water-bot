@@ -162,6 +162,8 @@ namespace WaterBot.Framework
                 return;
             }
 
+            this.ResetCopperChargeIfNeeded(wateringCan);
+
             if (this.Player.TilePoint.Y > tile.Y)
             {
                 this.Player.FacingDirection = 0;
@@ -342,6 +344,23 @@ namespace WaterBot.Framework
                     }
                 });
             }
+        }
+
+        /// <summary>
+        /// Copper cans can water three tiles when charged, but the bot issues one-tile actions.
+        /// Reset the farmer's charge so each use behaves like a tap.
+        /// </summary>
+        private void ResetCopperChargeIfNeeded(WateringCan wateringCan)
+        {
+            const int CopperUpgradeLevel = 1;
+            if (wateringCan.UpgradeLevel != CopperUpgradeLevel)
+            {
+                return;
+            }
+
+            Farmer farmer = this.Player;
+            farmer.toolPower.Value = 0;
+            farmer.toolHold.Value = 0;
         }
 
         private WateringCan? getCurrentWateringCanOrStop()
