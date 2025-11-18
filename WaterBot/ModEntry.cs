@@ -46,6 +46,10 @@ namespace WaterBot
             if (!Context.IsWorldReady)
                 return;
 
+            Farmer player = Game1.player;
+            if (!player.IsLocalPlayer)
+                return;
+
             if (this.bot?.active == true)
             {
                 if (this.bot.ActiveScreenId == null || this.bot.ActiveScreenId == Context.ScreenId)
@@ -58,19 +62,13 @@ namespace WaterBot
 
             if (e.Button.IsActionButton()) // SButton.MouseRight 
             {
-                Farmer activePlayer = Game1.player;
-                if (activePlayer == null)
-                {
-                    return;
-                }
-
-                if (this.isWateringHoedDirt(activePlayer))
+                if (this.isWateringHoedDirt(player, e.Cursor))
                 {
                     Logger.Log("Player provided trigger to begin bot.");
                     bool triggeredByController = e.Button.TryGetController(out Buttons _);
                     bool controllerOnlyMode = !Context.IsSplitScreen && Game1.options.gamepadControls;
                     bool useMouseKeyboardWateringRange = !(triggeredByController || controllerOnlyMode);
-                    this.bot?.start(this.console, activePlayer, useMouseKeyboardWateringRange);
+                    this.bot?.start(this.console, player, useMouseKeyboardWateringRange, Context.ScreenId);
                 }
             }
         }
@@ -78,10 +76,10 @@ namespace WaterBot
         /// <summary>
         /// Determines if the event was watering a tile of hoed dirt
         /// </summary>
-        private bool isWateringHoedDirt(Farmer player)
+        private bool isWateringHoedDirt(Farmer player, ICursorPosition? cursor)
         {
             // Is the player using a Watering Can on their Farm?
-            if (player?.CurrentItem is WateringCan)
+            if (player?.CurrentItem is WateringCan && cursor is not null)
             {
                 GameLocation? location = player.currentLocation;
                 if (location == null)
@@ -90,13 +88,13 @@ namespace WaterBot
                 }
 
                 // Find action tiles
-                Vector2 mousePosition = Utility.PointToVector2(Game1.getMousePosition()) + new Vector2(Game1.viewport.X, Game1.viewport.Y);
-                Vector2 toolLocation = player.GetToolLocation(mousePosition);
+                Vector2 cursorPosition = cursor.AbsolutePixels;
+                Vector2 toolLocation = player.GetToolLocation(cursorPosition);
                 Vector2 tile = Utility.clampToTile(toolLocation);
 
                 List<Vector2> tileLocations = this.Helper.Reflection
                     .GetMethod(player.CurrentItem, "tilesAffected")
-                    .Invoke<List<Vector2>>(new Vector2(tile.X / 64, tile.Y / 64), 0, player);
+                    .Invoke<List<Vector2>>(new Vector2(tile.X / Game1.tileSize, tile.Y / Game1.tileSize), 0, player);
 
                 foreach (Vector2 tileLocation in tileLocations)
                 {

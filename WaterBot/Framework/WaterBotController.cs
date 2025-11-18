@@ -40,11 +40,11 @@ namespace WaterBot.Framework
         /// </summary>
         ///
         /// <param name="console">Function for printing to debug console.</param>
-        public void start(console console, Farmer player, bool useMouseKeyboardWateringRange, bool showMessage = true)
+        public void start(console console, Farmer player, bool useMouseKeyboardWateringRange, int screenId, bool showMessage = true)
         {
             this.console = console;
             this.player = player;
-            this.ActiveScreenId = Context.ScreenId;
+            this.ActiveScreenId = screenId;
             this.useMouseKeyboardWateringRange = useMouseKeyboardWateringRange;
             this.active = true;
 
@@ -336,7 +336,8 @@ namespace WaterBot.Framework
 
                     if (WaterBot.config.RedoPathOnRefill)
                     {
-                        this.start(console, activePlayer, this.useMouseKeyboardWateringRange, false);
+                        int targetScreenId = this.ActiveScreenId ?? Context.ScreenId;
+                        this.start(console, activePlayer, this.useMouseKeyboardWateringRange, targetScreenId, false);
                     }
                     else
                     {

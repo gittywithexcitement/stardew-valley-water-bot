@@ -91,7 +91,8 @@ namespace WaterBot.Framework
         {
             GameLocation location = this.GetActiveLocation();
             Farmer farmer = this.GetActiveFarmer();
-            return location.isCollidingPosition(new Rectangle(y * 64 + 1, x * 64 + 1, 62, 62), Game1.viewport, isFarmer: true, -1, glider: false, farmer);
+            int tileSize = Game1.tileSize;
+            return location.isCollidingPosition(new Rectangle(y * tileSize + 1, x * tileSize + 1, tileSize - 2, tileSize - 2), Game1.viewport, isFarmer: true, -1, glider: false, farmer);
         }
 
         /// <summary>
